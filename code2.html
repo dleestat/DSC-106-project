@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.node circle {
+  fill: #00C6D7;
+}
+
+.node text {
+  font: 24px sans-serif;
+}
+
+.node--internal circle {
+  fill: #006A96;
+}
+
+.node--internal text {
+  font-weight: lighter;
+}
+
+.link {
+  fill: none;
+  stroke: #747678;
+  stroke-opacity: 0.2;
+  stroke-width: 3px;
+}
+
+label {
+  display: block;
+  font-family: "Brix Sans";
+}
+
+</style>
+<svg width="2100" height="1280"></svg>
+<script src="//d3js.org/d3.v4.min.js"></script>
+<script>
+
+var svg = d3.select("svg"),
+    width = +svg.attr("width"),
+    height = +svg.attr("height"),
+    g = svg.append("g").attr("transform", "translate(250,0)");
+
+var tree = d3.tree()
+    .size([height - 500, width - 200]);
+
+var cluster = d3.cluster()
+    .size([height-200, width - 800]);
+
+var stratify = d3.stratify()
+    .parentId(function(d) { return d.id.substring(0, d.id.lastIndexOf(".")); });
+
+d3.csv("data.csv", function(error, data) {
+  if (error) throw error;
+
+  var root = stratify(data)
+      .sort(function(a, b) { return (a.height - b.height) || a.id.localeCompare(b.id); });
+
+  cluster(root);
+
+  var link = g.selectAll(".link")
+      .data(root.descendants().slice(1))
+    .enter().append("path")
+      .attr("class", "link")
+      .attr("d", diagonal);
+
+  var node = g.selectAll(".node")
+      .data(root.descendants())
+    .enter().append("g")
+      .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
+      .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+  node.append("circle")
+      .attr("r", 10);
+
+  node.append("text")
+      .attr("dy", 7.5)
+      .attr("x", function(d) { return d.children ? -15 : 15; })
+      .style("text-anchor", function(d) { return d.children ? "end" : "start"; })
+      .text(function(d) { return d.id.substring(d.id.lastIndexOf(".") + 1); });
+
+
+  var timeout = setTimeout(function() {
+    d3.select("input[value=\"tree\"]")
+        .property("checked", true)
+        .dispatch("change");
+  }, 0);
+});
+
+function diagonal(d) {
+  return "M" + d.y + "," + d.x
+      + "C" + (d.parent.y + 100) + "," + d.x
+      + " " + (d.parent.y + 100) + "," + d.parent.x
+      + " " + d.parent.y + "," + d.parent.x;
+}
+
+</script>
